@@ -1,16 +1,17 @@
 #include <ESP8266WiFi.h>				 // BIBLIOTECA PADRÃO DO MÓDULO WIFI
 #include <ArduinoJson.h>				 // BIBLIOTECA PARA USAR DADOS EM JSON (FACILITA NAS REQUISIÇÕES)
 #include "./vendors/EmonLib/EmonLib.cpp" // BIBLIOTECA PARA LEITURA DE ENERGIA
+#include "./.env"						 // ARQUIVO COM AS CONFIGURAÇÕES DO AMBIENTE
 
-#define CURRENT_CAL 195	// VALOR DE CALIBRAÇÃO DO SENSOR DE ENERGIA
-#define NOISE 0.25		// RUÍDO PRODUZIDO NA SAÍDA DO SENSOR
-#define SENSOR_PIN A0	// PINO DO SENSOR DE CORRENTE ACS712
-#define NETWORK_SSID ""   // SSID DA REDE
-#define NETWORK_PASS ""	// SENHA DA REDE
-#define 
+#define CURRENT_CAL 195			// VALOR DE CALIBRAÇÃO DO SENSOR DE ENERGIA
+#define NOISE 0.25				// RUÍDO PRODUZIDO NA SAÍDA DO SENSOR
+#define SENSOR_PIN A0			// PINO DO SENSOR DE CORRENTE ACS712
+#define SENSOR_RELAY D2			// PINO DO MÓDULO RELÉ
+#define NETWORK_SSID ""   		// SSID DA REDE
+#define NETWORK_PASS ""			// SENHA DA REDE
 
-EnergyMonitor acs712;	// INSTANCIA O SENSOR DE CORRENTE
-WiFiServer server(80);  // INSTANCIA O SERVIDOR NA PORTA 80 (PADRÃO DOS BROWSERS)
+EnergyMonitor acs712;			// INSTANCIA O SENSOR DE CORRENTE
+WiFiServer server(80);  		// INSTANCIA O SERVIDOR NA PORTA 80 (PADRÃO DOS BROWSERS)
 
 /*
  * FUNÇÃO QUE CONECTA À REDE
@@ -26,16 +27,6 @@ void networkConnect() {
 
 	Serial.println("");
     Serial.println("Conectado!");
-
-	IPAddress ip(192, 168, 7, 7);
-    IPAddress gateway(192, 168, 1, 1);
-    IPAddress subnet(255, 255, 255, 0);
-
-    Serial.print("Configurando IP fixo para : ");
-    Serial.println(ip);
-
-	WiFi.config(ip, gateway, subnet);
-    server.begin();
 
     Serial.print("Server em: ");
     Serial.println(WiFi.localIP());
