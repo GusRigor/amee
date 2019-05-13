@@ -1,12 +1,11 @@
 #include <ESP8266WiFi.h>				 // BIBLIOTECA PADRÃO DO MÓDULO WIFI
 #include <ArduinoJson.h>				 // BIBLIOTECA PARA USAR DADOS EM JSON (FACILITA NAS REQUISIÇÕES)
 #include "./vendors/EmonLib/EmonLib.cpp" // BIBLIOTECA PARA LEITURA DE ENERGIA
-#include "./.env"						 // ARQUIVO COM AS CONFIGURAÇÕES DO AMBIENTE
 
 #define CURRENT_CAL 195			// VALOR DE CALIBRAÇÃO DO SENSOR DE ENERGIA
 #define NOISE 0.25				// RUÍDO PRODUZIDO NA SAÍDA DO SENSOR
 #define SENSOR_PIN A0			// PINO DO SENSOR DE CORRENTE ACS712
-#define SENSOR_RELAY D2			// PINO DO MÓDULO RELÉ
+#define RELAY_PIN D2			// PINO DO MÓDULO RELÉ
 #define NETWORK_SSID ""   		// SSID DA REDE
 #define NETWORK_PASS ""			// SENHA DA REDE
 
@@ -39,6 +38,7 @@ void setup(){
 	
 	networkConnect();
 	acs712.current(SENSOR_PIN, CURRENT_CAL);
+	pinMode(RELAY_PIN, OUTPUT);
 }
 
 /*
@@ -79,12 +79,14 @@ bool measureCurrent = true; // DEFINE SE O VALOR DA CORRENTE DEVE SER LIDO
 double current = 0; 		// PARA ARMAZENAR O VALOR DA CORRENTE
 
 void loop(){
-	if (calcTheCurrent) {
+	if (measureCurrent) {
 		current = calcCurrent();
 
 		Serial.print("Corrente medida: "); //IMPRIME O TEXTO NA SERIAL
 		Serial.print(current); //IMPRIME NA SERIAL O VALOR DE CORRENTE MEDIDA
 		Serial.println("mA"); //IMPRIME O TEXTO NA SERIAL
+
+		measureCurrent = false;
 	}
 
 	// WiFiClient client = server.available();
