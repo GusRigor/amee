@@ -8,5 +8,4 @@
 
 #### Bibliotecas de Terceiros Utilizadas:
 - ESP8266WiFi
-- ArduinoJson
 - EmonLib
