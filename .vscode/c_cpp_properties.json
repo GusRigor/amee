@@ -11,6 +11,14 @@
             "compilerPath": "C:\\MinGW\\bin\\gcc.exe",
             "cStandard": "c11",
             "cppStandard": "c++17"
+        },
+        {
+            "name": "Mac",
+            "includePath": [
+                "/Users/victor/Library/Arduino15/packages/esp8266/tools/**",
+                "/Users/victor/Library/Arduino15/packages/esp8266/hardware/esp8266/2.5.2/**"
+            ],
+            "forcedInclude": []
         }
     ],
     "version": 4
