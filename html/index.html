@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <title> AMEE - Configuração </title>
+
+    <style>
+        input, input:hover, input:focus {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        label {
+            font-size: 13px;
+        }
+    </style>
+  </head>
+
+  <body>
+    <div class="container d-flex align-items-center justify-content-center" style="min-height: 100vh">
+        <form id="save-credentials" class="border p-4" method="POST" style="width: 400px; box-shadow: 0px 3px 6px #00000022; margin: 125px auto 50px;">
+            <img src="https://i.imgur.com/JIWj0Oy.jpg" alt="" style="width: 200px; height: 200px; display: block; margin: -125px auto 25px;">
+
+            <h5 class="text-center mb-4"> Cadastro de Aparelho </h5>
+
+            <p class="small text-secondary text-justify" style="line-height: 15px;"> * Para uma medição mais precisa, os campos de Tensão e Potência podem ser preenchidos, embora não sejam obrigatórios! </p>
+
+            <div class="form-group mb-3">
+                <label class="mb-0" for="ssid"> SSID (NOME) DA REDE* </label>
+                <input type="text" class="form-control" id="ssid">
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="mb-0" for="pass"> SENHA DA REDE* </label>
+                <input type="text" class="form-control" id="pass">
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="mb-0" for="name"> Nome do Aparalho* </label>
+                <input type="text" class="form-control" id="name">
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="mb-0" for="tension"> Tensão de Operação do Aparelho </label>
+                <input type="text" class="form-control" id="tension">
+            </div>
+
+            <div class="form-group mb-0">
+                <label class="mb-0" for="power"> Potência do Aparelho </label>
+                <input type="text" class="form-control" id="power">
+            </div>
+
+            <span class="invisible d-block text-center my-2 font-weight-bold d-flex align-items-center justify-content-center" id="response" style=' height: 30px; font-size: 12px; line-height: 12px;' > Carregando... </span>
+
+            <button type="submit" class="btn btn-success w-100"> Enviar </button>
+        </form>
+    </div>
+
+    <script>
+    
+        document.getElementById("save-credentials").addEventListener("submit", e => {
+            e.preventDefault()
+
+            const ssid = e.target[0].value
+            const pass = e.target[1].value
+            const name = e.target[2].value
+            const tension = e.target[3].value
+            const power = e.target[4].value
+
+            const respEl = document.getElementById("response")
+
+            if (ssid.length < 1 || pass.length < 1 || name.length < 1) {
+                respEl.classList.remove('invisible')
+                respEl.classList.add('text-danger')
+                respEl.innerHTML = "Por favor, preencha todos os campos com *"
+
+                return
+            }            
+
+            const xmlHttp = new XMLHttpRequest();
+            xmlHttp.onreadystatechange = function () {
+                respEl.classList.remove('text-danger')
+                respEl.classList.remove('invisible')
+                respEl.innerHTML = "Configurando módulo..."
+
+                if (this.readyState < 3 || this.readyState > 4) return;
+
+                if (this.readyState == 3) {
+                    respEl.innerHTML = "Tentando conectar-se à rede..."   
+                }
+
+                if (this.readyState == 4) {
+                    if (this.status == 200) {
+                        if (this.responseText.includes("error")) {
+                            respEl.classList.add('text-danger')
+                            respEl.innerHTML = "Incapaz de conectar à sua rede, revise os dados de login!"
+
+                            return
+                        }
+
+                        respEl.classList.remove('text-danger')
+                        respEl.classList.add('text-success')
+                        respEl.innerHTML = "Tudo certo, conecte-se de novo à sua rede e continue!"
+
+                        // window.close()
+
+                        return
+                    }
+
+                    respEl.classList.add("text-danger")
+                    respEl.innerHTML = "Você nã está conectado à rede AMEE! <br> Conecte-se e recarregue esta página"
+                }
+            }
+        
+            xmlHttp.open("POST", 'http://192.168.4.1/config');
+            xmlHttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded')
+            xmlHttp.send(`ssid=${ssid}&pass=${pass}`)
+        })
+        
+    </script>
+  </body>
+</html>

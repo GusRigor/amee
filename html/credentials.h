@@ -1,0 +1,67 @@
+String CREDENTIALS_HTML =
+    "<!doctype html>"
+        "<html lang='pt-BR'>"
+        "<head>"
+            "<meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>"
+            "<link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css' integrity='sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T' crossorigin='anonymous'>"
+
+            "<title> AMEE - Configuração </title>"
+
+            "<style>"
+                "input, input:hover, input:focus {"
+                    "outline: none !important;"
+                    "box-shadow: none !important;"
+                "}"
+
+                "label {"
+                    "font-size: 13px;"
+                "}"
+            "</style>"
+        "</head>"
+
+        "<body>"
+            "<div class='container d-flex align-items-center justify-content-center' style='height: 100vh'>"
+                "<form id='save-credentials' class='m-auto border p-4' method='POST' style='width: 400px; box-shadow: 0px 3px 6px #00000022'>"
+                    "<div class='form-group mb-3'>"
+                        "<label class='mb-0' for='ssid'> SSID DA REDE </label>"
+                        "<input type='text' class='form-control' id='ssid'>"
+                    "</div>"
+
+                    "<div class='form-group mb-3'>"
+                        "<label class='mb-0' for='pass'> SENHA DA REDE </label>"
+                        "<input type='text' class='form-control' id='pass'>"
+                    "</div>"
+
+                    "<button type='submit' class='btn btn-success w-100'> Enviar </button>"
+                "</form>"
+            "</div>"
+
+            "<script>"
+"            "
+                "document.getElementById('save-credentials').addEventListener('submit', e => {"
+                    "e.preventDefault()"
+
+                    "const ssid = e.target[0].value"
+                    "const pass = e.target[1].value"
+
+                    "const xmlHttp = new XMLHttpRequest();"
+                        "xmlHttp.open('POST', 'http://192.168.4.1/', false); // false for synchronous request"
+                        "xmlHttp.send(JSON.stringify({"
+                            "ssid,"
+                            "pass"
+                        "}));"
+"                    "
+                    "xmlHttp.onreadystatechange = function () {"
+                        "if (this.readyState != 4) return;"
+
+                        "if (this.status == 200) {"
+                            "window.close()"
+                        "}"
+                    "};"
+                "})"
+"                "
+            "</script>"
+        "</body>"
+        "</html>"
+;
