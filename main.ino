@@ -218,10 +218,9 @@ void setup(){
 		WiFi.softAP(AP_SSID, AP_PASS);
 		Serial.println("AP criado");
 		
+		// ROTAS DO NODE
 		server.on("/", HTTP_GET, handleShowCredentialsForm);
 		server.on("/config", HTTP_POST, handleCreateNode);
-
-		// ROTAS DO NODE
 		// server.on("/equipment", HTTP_GET, handleGetNodeEquipment);
 		// server.on("/equipment", HTTP_POST,  handleCreateEquipment);
 		// server.on("/equipment", HTTP_PUT, handleChangeEquipment);
