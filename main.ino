@@ -1,8 +1,9 @@
 #include <EEPROM.h>						 // BIBLIOTECA PARA USO DA MEMÓRIA EEPROM
 #include <ESP8266WiFi.h>				 // BIBLIOTECA PADRÃO DO MÓDULO WIFI	
 #include <ESP8266WebServer.h>			 // BIBLIOTECA PARA WEB SERVER 
-#include <user_interface.h>			 // BIBLIOTECA NECESSARIA PARA ACESSAR OS TIMER`S.
+#include <user_interface.h>			 	 // BIBLIOTECA NECESSARIA PARA ACESSAR OS TIMER`S.
 #include "./vendors/EmonLib/EmonLib.cpp" // BIBLIOTECA PARA LEITURA DE ENERGIA
+#include "./html/credentials.cpp"		 // HTML PARA CADASTRAR REDE
 
 // ESTADOS PARA CONFIGURAR NODE
 #define CLEAR_EEPROM true
@@ -32,22 +33,26 @@ os_timer_t powerOffTimer;				 // INSTANCIA O TIMER PARA DELIGAR O APARELHO
 /*
  * DADOS INICIAIS DO NODE
  */
-String ssid			= "Familiadoremi";	// SSID DA REDE
-String pass			= "Deus12345";		// SENHA DA REDE
+String ssid			= "";				// SSID DA REDE
+String pass			= "";				// SENHA DA REDE
 String id 			= "";				// ID DO NODE
 String ip 			= "";				// IP DO NODE
 String name 		= ""; 				// NOME DO EQUIPAMENTO
 String tension 		= ""; 				// TENSÃO DE OPERAÇÃO DO EQUIPAMENTO
-String power 		= "";			// POTÊNCIA DE OPERAÇÃO DO EQUIPAMENTO
+String power 		= "";				// POTÊNCIA DE OPERAÇÃO DO EQUIPAMENTO
 bool state 			= false;			// STATUS DO EQUIPAMENTO
 double lastCurrent 	= 0; 				// ÚLTIMO VALOR DA DE CORRENTE LIDO
-double current 		= 0; 				// VALOR DA CORRENTE MÉDIA ATUAL
-// bool toPowerOff 	= false;			// DEVE DESLIGAR QUANDO POWEROFF CHEGAR A 0?
-// int powerOff    	= 0;				// TEMPO RESTANTE PARA ELE DESLIGAR
+double current 		= 0; 				// VALOR DA CORRENTE SENDO LIDA
+double totalCurrent = 0;				// VALOR DE TODA A CORRENTE QUE FOI LIDA DESDE QUE LIGOU O EQUIPAMENTO
+double lastCurrent  = 0; 				// VALOR DA ÚLTIMA CORRENTE SALVA NO SERVIDOR
 
 /*
  * FUNÇÕES CLIENTE
  */
+void handleShowCredentials() {
+	server.send(200, "text/html", HTML_CREDENTIALS);
+}
+
 bool handleCreateOnServer() {
 	if (client.connect(API_URL, 80)) {
 		Serial.println("CRIANDO NODE");
@@ -76,15 +81,8 @@ bool handleCreateOnServer() {
 		Serial.println("CRIADO");
 		client.stop();
 
-		EEPROM.begin(512);
-		delay(100);
-		EEPROM.put(EEPROM_ID, (String)id);
-		delay(100);
-		EEPROM.commit();
-		delay(100);
-		EEPROM.end();
-
-		Serial.println("SALVO NO EEPROM");
+		writeInEEPROM(EEPROM_ID, id)
+		Serial.println("ID SALVO NO EEPROM");
 
 		return true;
 	}
@@ -92,11 +90,43 @@ bool handleCreateOnServer() {
 	return false;
 }
 
-bool handleCreateLog() {
+void handleUpdateCurrent() {
+	if (client.connect(API_URL, 80)) {
+		Serial.println("GRAVANDO VALOR DA CORRENTE LIDA...");
+
+		String postData = "current=" current;
+		Serial.println(postData);
+
+		client.print("PUT /node/");
+		client.print(id);
+		client.println(" HTTP/1.1");
+		client.print("Host: ");
+		client.println(API_URL);
+		client.println("Cache-Control: no-cache");
+		client.println("Content-Type: application/x-www-form-urlencoded");
+		client.print("Content-Length: ");
+		client.println(postData.length());
+		client.println();
+		client.println(postData);
+
+		while (client.connected()) {
+			if (client.available()) {
+				Serial.println("GRAVADO");
+			}
+		}
+
+		client.stop();
+		Serial.println("ID SALVO NO EEPROM");
+
+		lastCurrent = current;
+	}
+}
+
+void handleCreateLog() {
 	if (client.connect(API_URL, 80)) {
 		Serial.println("CRIANDO LOG");
 
-		String postData = "id=" + id + "&state=" + state + "&currrent=" + current;
+		String postData = "totalCurrent=" + totalCurrent + "&id=" + ip;
 		Serial.println(postData);
 
 		client.println("POST /log HTTP/1.1");
@@ -111,16 +141,12 @@ bool handleCreateLog() {
 
 		while (client.connected()) {
 			if (client.available()) {
-				String str = client.readStringUntil('{');
+				Serial.println("LOG CRIADO");
 			}
 		}
 
 		client.stop();
-
-		return true;
 	}
-
-	return false;
 }
 
 /*
@@ -149,13 +175,11 @@ void setPowerOff(void *z) {
 	state = false;
 
 	digitalWrite(RELAY_PIN, LOW);
-	// toPowerOff = false;
-	// powerOff = 0;
 
 	Serial.print("Mudou status para: false");
 
-	handleCreateLog();
 	current = 0;
+	totalCurrent = 0;
 }
 
 void handleChangeStatus() {
@@ -169,15 +193,16 @@ void handleChangeStatus() {
 		digitalWrite(RELAY_PIN, HIGH);
 	}
 
-	// toPowerOff = false;
-	// powerOff = 0;
-
 	Serial.print("Mudou status para: ");
 	Serial.println(server.arg("state"));
 	server.send(200);
 
-	handleCreateLog();
+	if (!state) {
+		handleCreateLog();
+	}
+
 	current = 0;
+	totalCurrent = 0;
 }
 
 /*
@@ -219,30 +244,11 @@ String readInEEPROM(int add) {
 	return String(data);
 }
 
-void handleTeste() {
-	server.sendHeader("Access-Control-Allow-Origin", "*");
-	Serial.print("\nTestando... ");
-
-	String test = server.arg("teste");
-	String a = "";
-	
-	a = readInEEPROM(0);
-	Serial.print("Last: ");
-	Serial.println(a);
-
-	writeInEEPROM(0, test);
-
-	a = readInEEPROM(0);
-	Serial.print("Now: ");
-	Serial.println(a);
-}
-
 void handleSetPowerOff() {
 	server.sendHeader("Access-Control-Allow-Origin", "*");
 
-	int ms = server.arg("seconds").toInt();
-	ms = ms * 1000;
-	// toPowerOff = true;
+	int secs = server.arg("seconds").toInt();
+	long int ms = secs * 1000;
 
 	os_timer_arm(&powerOffTimer, ms, false);
 
@@ -259,7 +265,7 @@ void handleDestroyPowerOff() {
 /*
  * FUNÇÃO QUE CONECTA À REDE
  */
-	boolean networkConnect() {
+boolean networkConnect() {
 	WiFi.enableSTA(true);
 	WiFi.begin(ssid, pass);
 
@@ -277,25 +283,14 @@ void handleDestroyPowerOff() {
 		server.on("/status", HTTP_POST, handleChangeStatus);
 		server.on("/power-off", HTTP_POST, handleSetPowerOff);
 		server.on("/power-off", HTTP_DELETE, handleDestroyPowerOff);
-		server.on("/teste", HTTP_POST, handleTeste);
 		server.begin();
 
 		ip = WiFi.localIP().toString().c_str();
 
 		if (!modifiedEEPROM()) {
-			Serial.println("SALVANDO REDE NA EEPROM");
-			EEPROM.begin(512);
-			delay(100);
-			EEPROM.put(EEPROM_ISSET, 1);
-			delay(100);
-			EEPROM.put(EEPROM_SSID, ssid);
-			delay(100);
-			EEPROM.put(EEPROM_PASS, pass);
-			delay(100);
-			EEPROM.commit();
-			delay(100);
-			EEPROM.end();
-			delay(100);
+			writeInEEPROM(EEPROM_ISSET, "1");
+			writeInEEPROM(EEPROM_SSID, ssid);
+			writeInEEPROM(EEPROM_PASS, pass);
 		}
 
 		Serial.print("\nip:");
@@ -311,29 +306,11 @@ void handleDestroyPowerOff() {
 /*
  * FUNÇÃO QUE CHECA SE HOUVE UMA PRIMEIRA INICIALIZAÇÃO (SSID, PASS E ID ESTÃO SETADOS NA EEPROM)
  */
-bool modifiedEEPROM() {
-	return true;
-	EEPROM.begin(512);
-	delay(100);
-	
-	int val;
+bool modifiedEEPROM() {	
+	String val = "";
+	val = readInEEPROM(EEPROM_ISSET);
 
-	EEPROM.get(EEPROM_ISSET, val);
-	Serial.print("CONTROLE DA EEPROM: ");
-	Serial.println(val);
-
-	Serial.println("read() da EEPROM:");
-	for (int i = 0 ; i < EEPROM.length(); i++) {
-		Serial.print(EEPROM.read(i));
-		Serial.print(", ");
-		delay(10);
-	}
-
-	EEPROM.end();
-
-	return true;
-	
-	return val == 1;
+	return (val.toInt() == 1);
 }
 
 void setup() {
@@ -344,21 +321,22 @@ void setup() {
 	pinMode(4, OUTPUT);
 	os_timer_setfn(&powerOffTimer, setPowerOff, NULL);
 
-	if (!CLEAR_EEPROM) {
+	if (CLEAR_EEPROM) {
 		EEPROM.begin(512);
 		delay(10);
-		Serial.print("LIMPANDO.");
+		Serial.print("\nLIMPANDO EEPROM.");
 		for (int i = 0 ; i < EEPROM.length(); i++) {
 			EEPROM.write(i, -1);
 			delay(10);
 			Serial.print(".");
 		}
+
 		EEPROM.commit();
 		delay(10);
 		EEPROM.end();
 		delay(10);
 
-		Serial.println("EEPROM LIMPA!");
+		Serial.println("\nEEPROM LIMPA!");
 	}
 
 	WiFi.mode(WIFI_AP_STA);
@@ -368,19 +346,13 @@ void setup() {
 	if (modifiedEEPROM()) { // CHECA SE OS DADOS DE SSID E PASSWORD DA REDE ESTÃO SALVOS NA EEPROM
 		Serial.println("DADOS SALVOS NA EEPROM:");
 		
-		// EEPROM.begin(512);
-		// delay(100);
-		// EEPROM.get(EEPROM_SSID, ssid);
-		// delay(100);
-  		// EEPROM.get(EEPROM_PASS, pass);
-		// delay(100);
-		// EEPROM.get(EEPROM_ID, id);
-		// delay(100);
-		// EEPROM.end();
+		ssid = readInEEPROM(EEPROM_SSID);
+		pass = readInEEPROM(EEPROM_PASS);
+		id = readInEEPROM(EEPROM_ID);
 
-		// Serial.println(ssid);
-		// Serial.println(pass);
-		// Serial.println(id);
+		Serial.println(ssid);
+		Serial.println(pass);
+		Serial.println(id);
 
 		if (networkConnect()) {
 			return;
@@ -388,16 +360,14 @@ void setup() {
 	} else {
 		// SE NÃO, CRIA UM PONTO DE ACESSO PARA O USUÁRIO SALVAR OS DADOS
 		WiFi.enableAP(true);
-		WiFi.softAP(AP_SSID, AP_PASS);
+		WiFi.softAP(AP_SSID, AP_PASS, 1, 1);
 
 		Serial.println("PA CRIADO");
 
+		server.on("/", HTTP_GET, handleShowCredentials);
 		server.on("/config", HTTP_POST, handleCreateNode);
 		server.begin();
 	}
-
-	Serial.print("ID: ");
-	Serial.println(id);
 }
 
 /*
@@ -417,7 +387,12 @@ void calcCurrent() {
 		readedCurrent = 0;
 	}
 
-	current += readedCurrent;
+	current = readedCurrent;
+	totalCurrent += current;
+
+	if ((lastCurrent - 100) > current || (lastCurrent + 100) < current) {
+		void handleUpdateCurrent() {
+	}
 }
 
 void loop(){
