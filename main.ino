@@ -1,12 +1,15 @@
+/*
+ * IP DO SERVER NO PA: 192.168.4.1
+ */
+
 #include <EEPROM.h>						 // BIBLIOTECA PARA USO DA MEMÓRIA EEPROM
 #include <ESP8266WiFi.h>				 // BIBLIOTECA PADRÃO DO MÓDULO WIFI	
 #include <ESP8266WebServer.h>			 // BIBLIOTECA PARA WEB SERVER 
 #include <user_interface.h>			 	 // BIBLIOTECA NECESSARIA PARA ACESSAR OS TIMER`S.
 #include "./vendors/EmonLib/EmonLib.cpp" // BIBLIOTECA PARA LEITURA DE ENERGIA
-#include "./html/credentials.cpp"		 // HTML PARA CADASTRAR REDE
 
 // ESTADOS PARA CONFIGURAR NODE
-#define CLEAR_EEPROM true
+#define CLEAR_EEPROM false
 
 #define CURRENT_CAL 195					 // VALOR DE CALIBRAÇAO DO SENSOR DE CORRENTE
 #define NOISE 0.25						 // VALOR DE RUÍDO DO SENSOR DE CORRENTE
@@ -20,9 +23,10 @@
 
 // ENDEREÇO DOS DADOS NA EEPROM
 #define EEPROM_ISSET 0
-#define EEPROM_ID	 11
-#define EEPROM_SSID  51
-#define EEPROM_PASS  101
+#define EEPROM_ID	 10
+#define EEPROM_SSID  50
+#define EEPROM_PASS  80
+#define EEPROM_IP  	 110
 #define MAX_EEPROM_DATA 40
 
 EnergyMonitor acs712;					 // INSTANCIA O SENSOR DE CORRENTE
@@ -41,7 +45,6 @@ String name 		= ""; 				// NOME DO EQUIPAMENTO
 String tension 		= ""; 				// TENSÃO DE OPERAÇÃO DO EQUIPAMENTO
 String power 		= "";				// POTÊNCIA DE OPERAÇÃO DO EQUIPAMENTO
 bool state 			= false;			// STATUS DO EQUIPAMENTO
-double lastCurrent 	= 0; 				// ÚLTIMO VALOR DA DE CORRENTE LIDO
 double current 		= 0; 				// VALOR DA CORRENTE SENDO LIDA
 double totalCurrent = 0;				// VALOR DE TODA A CORRENTE QUE FOI LIDA DESDE QUE LIGOU O EQUIPAMENTO
 double lastCurrent  = 0; 				// VALOR DA ÚLTIMA CORRENTE SALVA NO SERVIDOR
@@ -49,10 +52,6 @@ double lastCurrent  = 0; 				// VALOR DA ÚLTIMA CORRENTE SALVA NO SERVIDOR
 /*
  * FUNÇÕES CLIENTE
  */
-void handleShowCredentials() {
-	server.send(200, "text/html", HTML_CREDENTIALS);
-}
-
 bool handleCreateOnServer() {
 	if (client.connect(API_URL, 80)) {
 		Serial.println("CRIANDO NODE");
@@ -81,7 +80,7 @@ bool handleCreateOnServer() {
 		Serial.println("CRIADO");
 		client.stop();
 
-		writeInEEPROM(EEPROM_ID, id)
+		writeInEEPROM(EEPROM_ID, id);
 		Serial.println("ID SALVO NO EEPROM");
 
 		return true;
@@ -90,11 +89,49 @@ bool handleCreateOnServer() {
 	return false;
 }
 
-void handleUpdateCurrent() {
+void handleGetState() {
 	if (client.connect(API_URL, 80)) {
-		Serial.println("GRAVANDO VALOR DA CORRENTE LIDA...");
+		Serial.println("RECUPERANDO ÚLTIMO ESTADO SALVO");
 
-		String postData = "current=" current;
+		String postData = "";
+		String newState;
+
+		client.print("GET /node/");
+		client.print(id);
+		client.println(" HTTP/1.1");
+		client.print("Host: ");
+		client.println(API_URL);
+		client.println("Content-Type: application/x-www-form-urlencoded");
+		client.print("Content-Length: ");
+		client.println(postData.length());
+		client.println();
+		client.println(postData);
+
+		while (client.connected()) {
+			if (client.available()) {
+				String str = client.readStringUntil('{');
+				newState = str.substring(str.indexOf("state\":") + 7, str.indexOf(",\"tension"));
+			}
+		}
+
+		Serial.print("\nESTADO RECUPERADO: ");
+		Serial.println(newState);
+
+		state = (newState == "true");
+
+		digitalWrite(RELAY_PIN, state);
+		current = 0;
+		totalCurrent = 0;
+
+		client.stop();
+	}
+}
+
+void handleChangeNodeIP() {
+	if (client.connect(API_URL, 80)) {
+		Serial.println("MUDANDO IP DO NODE NO SERVER");
+
+		String postData = "ip=" + ip;
 		Serial.println(postData);
 
 		client.print("PUT /node/");
@@ -110,26 +147,24 @@ void handleUpdateCurrent() {
 		client.println(postData);
 
 		while (client.connected()) {
-			if (client.available()) {
-				Serial.println("GRAVADO");
-			}
+			delay(100);
 		}
 
+		Serial.println("IP ATUALIZADO COM SUCESSO!");
 		client.stop();
-		Serial.println("ID SALVO NO EEPROM");
-
-		lastCurrent = current;
 	}
 }
 
-void handleCreateLog() {
+void handleUpdateCurrent() {
 	if (client.connect(API_URL, 80)) {
-		Serial.println("CRIANDO LOG");
+		Serial.println("GRAVANDO VALOR DA CORRENTE LIDA...");
 
-		String postData = "totalCurrent=" + totalCurrent + "&id=" + ip;
+		String postData = "current=" + String(current, 2);
 		Serial.println(postData);
 
-		client.println("POST /log HTTP/1.1");
+		client.print("PUT /node/");
+		client.print(id);
+		client.println(" HTTP/1.1");
 		client.print("Host: ");
 		client.println(API_URL);
 		client.println("Cache-Control: no-cache");
@@ -140,11 +175,40 @@ void handleCreateLog() {
 		client.println(postData);
 
 		while (client.connected()) {
-			if (client.available()) {
-				Serial.println("LOG CRIADO");
-			}
+			delay(100);
 		}
 
+		Serial.println("GRAVADO");
+		client.stop();
+
+		lastCurrent = current;
+	}
+}
+
+void handleChangeServerState() {
+	if (client.connect(API_URL, 80)) {
+		Serial.println("MUDANDO ESTADO DO NODE NO SERVER");
+
+		String postData = "totalCurrent=" + String(totalCurrent, 2) + "&state=" + state;
+		Serial.println(postData);
+
+		client.print("POST /node/change-state/");
+		client.print(id);
+		client.println(" HTTP/1.1");
+		client.print("Host: ");
+		client.println(API_URL);
+		client.println("Cache-Control: no-cache");
+		client.println("Content-Type: application/x-www-form-urlencoded");
+		client.print("Content-Length: ");
+		client.println(postData.length());
+		client.println();
+		client.println(postData);
+
+		while (client.connected()) {
+			delay(100);
+		}
+
+		Serial.println("ESTADO MUDADO");
 		client.stop();
 	}
 }
@@ -172,11 +236,15 @@ void handleCreateNode() {
 }
 
 void setPowerOff(void *z) {
-	state = false;
+	if (state == false) {
+		return;
+	}
 
+	state = false;
 	digitalWrite(RELAY_PIN, LOW);
 
 	Serial.print("Mudou status para: false");
+	handleChangeServerState();
 
 	current = 0;
 	totalCurrent = 0;
@@ -185,21 +253,20 @@ void setPowerOff(void *z) {
 void handleChangeStatus() {
 	server.sendHeader("Access-Control-Allow-Origin", "*");
 
-	if (server.arg("state") == "false") {
-		state = false;
-		digitalWrite(RELAY_PIN, LOW);
-	} else {
-		state = true;
-		digitalWrite(RELAY_PIN, HIGH);
+	bool newState = (server.arg("state") == "true");
+
+	if (newState == state) {
+		return;
 	}
+
+	state = newState;
+	digitalWrite(RELAY_PIN, state);
 
 	Serial.print("Mudou status para: ");
 	Serial.println(server.arg("state"));
+	
+	handleChangeServerState();
 	server.send(200);
-
-	if (!state) {
-		handleCreateLog();
-	}
 
 	current = 0;
 	totalCurrent = 0;
@@ -218,7 +285,7 @@ void writeInEEPROM(int add, String data) {
 		delay(20);
 	}
 
-	EEPROM.write(add+_size,'\0');   //Add termination null character for String Data
+	EEPROM.write(add+_size,'\0');
 	delay(25);
 	EEPROM.commit();
 	delay(250);
@@ -291,10 +358,20 @@ boolean networkConnect() {
 			writeInEEPROM(EEPROM_ISSET, "1");
 			writeInEEPROM(EEPROM_SSID, ssid);
 			writeInEEPROM(EEPROM_PASS, pass);
+			writeInEEPROM(EEPROM_IP, ip);
 		}
 
 		Serial.print("\nip:");
 		Serial.println(ip);
+
+		String lastIp = "";
+
+		lastIp = readInEEPROM(EEPROM_IP);
+
+		if (lastIp != ip) {
+			handleChangeNodeIP();
+			writeInEEPROM(EEPROM_IP, ip);
+		}
 
 		return true;
 	}
@@ -355,6 +432,7 @@ void setup() {
 		Serial.println(id);
 
 		if (networkConnect()) {
+			handleGetState();
 			return;
 		}
 	} else {
@@ -362,11 +440,10 @@ void setup() {
 		WiFi.enableAP(true);
 		WiFi.softAP(AP_SSID, AP_PASS, 1, 1);
 
-		Serial.println("PA CRIADO");
-
-		server.on("/", HTTP_GET, handleShowCredentials);
 		server.on("/config", HTTP_POST, handleCreateNode);
 		server.begin();
+
+		Serial.print("PA CRIADO");
 	}
 }
 
@@ -391,7 +468,7 @@ void calcCurrent() {
 	totalCurrent += current;
 
 	if ((lastCurrent - 100) > current || (lastCurrent + 100) < current) {
-		void handleUpdateCurrent() {
+		void handleUpdateCurrent();
 	}
 }
 
