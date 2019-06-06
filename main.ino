@@ -1,5 +1,6 @@
 /*
  * IP DO SERVER NO PA: 192.168.4.1
+ * ESTADOS NO RElÉ ESTÃO AO CONTRÁRIO
  */
 
 #include <EEPROM.h>						 // BIBLIOTECA PARA USO DA MEMÓRIA EEPROM
@@ -13,7 +14,7 @@
 
 #define CURRENT_CAL 195					 // VALOR DE CALIBRAÇAO DO SENSOR DE CORRENTE
 #define NOISE 0.25						 // VALOR DE RUÍDO DO SENSOR DE CORRENTE
-#define SENSOR_PIN 9					 // PINO DO SENSOR DE CORRENTE
+#define SENSOR_PIN A0					 // PINO DO SENSOR DE CORRENTE
 
 #define RELAY_PIN 4						 // PINO DO RELE
 
@@ -115,9 +116,9 @@ void handleGetState() {
 		}
 
 		Serial.print("\nESTADO RECUPERADO: ");
-		Serial.println(newState);
+		Serial.println(!newState);
 
-		state = (newState == "true");
+		state = !(newState == "false");
 
 		digitalWrite(RELAY_PIN, state);
 		current = 0;
@@ -189,11 +190,20 @@ void handleChangeServerState() {
 	if (client.connect(API_URL, 80)) {
 		Serial.println("MUDANDO ESTADO DO NODE NO SERVER");
 
-		String postData = "totalCurrent=" + String(totalCurrent, 2) + "&state=" + state;
-		Serial.println(postData);
+		String queryData = "?totalCurrent=" + String(totalCurrent, 2) + "&state=";
+		String postData = "";
+
+		if (state) {
+			queryData += "true";
+		} else {
+			queryData += "false";
+		}
+
+		Serial.println(queryData);
 
 		client.print("POST /node/change-state/");
 		client.print(id);
+		client.print(queryData);
 		client.println(" HTTP/1.1");
 		client.print("Host: ");
 		client.println(API_URL);
@@ -236,12 +246,12 @@ void handleCreateNode() {
 }
 
 void setPowerOff(void *z) {
-	if (state == false) {
+	if (state == true) {
 		return;
 	}
 
 	state = false;
-	digitalWrite(RELAY_PIN, LOW);
+	digitalWrite(RELAY_PIN, HIGH);
 
 	Serial.print("Mudou status para: false");
 	handleChangeServerState();
@@ -260,10 +270,10 @@ void handleChangeStatus() {
 	}
 
 	state = newState;
-	digitalWrite(RELAY_PIN, state);
+	digitalWrite(RELAY_PIN, !state);
 
 	Serial.print("Mudou status para: ");
-	Serial.println(server.arg("state"));
+	Serial.println(state);
 	
 	handleChangeServerState();
 	server.send(200);
@@ -394,8 +404,9 @@ void setup() {
 	Serial.begin(115200);
 	Serial.flush();
 
-	acs712.current(9, CURRENT_CAL);
+	acs712.current(SENSOR_PIN, CURRENT_CAL);
 	pinMode(4, OUTPUT);
+	digitalWrite(4, LOW);
 	os_timer_setfn(&powerOffTimer, setPowerOff, NULL);
 
 	if (CLEAR_EEPROM) {
@@ -451,21 +462,21 @@ void setup() {
  * FUNÇÃO PARA CALCULAR A CORRENTE
  */
 void calcCurrent() {
-	Serial.print("LENDO CORRENTE TOTAL: ");
-	Serial.print(current);
-	Serial.println("mA");
+	double readedCurrent = 0;
+	readedCurrent = acs712.calcIrms(1500) - NOISE; // NUMERO DE AMOSTRAS
 
-	double readedCurrent, currentDraw = 0;
-	acs712.calcVI(20, 100); //FUNÇÃO DE CÁLCULO (20 SEMICICLOS / TEMPO LIMITE PARA FAZER A MEDIÇÃO)
-
-	readedCurrent = (acs712.Irms - NOISE); //VARIÁVEL RECEBE O VALOR DE CORRENTE RMS OBTIDO
+	// readedCurrent = (acs712.Irms - NOISE); //VARIÁVEL RECEBE O VALOR DE CORRENTE RMS OBTIDO
 	
 	if (readedCurrent < 0) {
 		readedCurrent = 0;
 	}
 
-	current = readedCurrent;
+	current = (readedCurrent * 1000);
 	totalCurrent += current;
+
+	Serial.print("LENDO CORRENTE: ");
+	Serial.print(current);
+	Serial.println("mA");
 
 	if ((lastCurrent - 100) > current || (lastCurrent + 100) < current) {
 		void handleUpdateCurrent();
