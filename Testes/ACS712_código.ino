@@ -22,4 +22,8 @@ void loop(){
     Serial.print("Corrente medida: "); //IMPRIME O TEXTO NA SERIAL
     Serial.print(currentDraw); //IMPRIME NA SERIAL O VALOR DE CORRENTE MEDIDA
     Serial.println("A"); //IMPRIME O TEXTO NA SERIAL
+
+    Serial.print("Potencia calculada: "); //IMPRIME O TEXTO NA SERIAL
+    Serial.print(currentDraw); ////IMPRIME NA SERIAL O VALOR DA CORRENTE MEDIDA * A TENSÃO NOMINAL DA TOMADA
+    Serial.println("W"); //IMPRIME O TEXTO NA SERIAL
 }
