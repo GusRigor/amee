@@ -24,6 +24,6 @@ void loop(){
     Serial.println("A"); //IMPRIME O TEXTO NA SERIAL
 
     Serial.print("Potencia calculada: "); //IMPRIME O TEXTO NA SERIAL
-    Serial.print(currentDraw); ////IMPRIME NA SERIAL O VALOR DA CORRENTE MEDIDA * A TENSÃO NOMINAL DA TOMADA
+    Serial.print(currentDraw*110); ////IMPRIME NA SERIAL O VALOR DA CORRENTE MEDIDA * A TENSÃO NOMINAL DA TOMADA
     Serial.println("W"); //IMPRIME O TEXTO NA SERIAL
 }
