@@ -1,8 +1,13 @@
+#include <EEPROM.h>
 #include "EmonLib.h" //INCLUSÃO DE BIBLIOTECA
- 
+
+#define espacoEEPROM 1000 //Reserva o espaço da EEPROM
 #define CURRENT_CAL 12.70 //VALOR DE CALIBRAÇÃO (DEVE SER AJUSTADO EM PARALELO COM UM MULTÍMETRO MEDINDO A CORRENTE DA CARGA)
 const int pinoSensor = A2; //PINO ANALÓGICO EM QUE O SENSOR ESTÁ CONECTADO
 float ruido = 0.08; //RUÍDO PRODUZIDO NA SAÍDA DO SENSOR (DEVE SER AJUSTADO COM A CARGA DESLIGADA APÓS CARREGAMENTO DO CÓDIGO NO ARDUINO)
+
+void EEPROMWriteInt(int address, int value); //2 Bytes
+int  EEPROMReadInt(int address);
  
 EnergyMonitor emon1; //CRIA UMA INSTÂNCIA
  
@@ -26,4 +31,19 @@ void loop(){
     Serial.print("Potencia calculada: "); //IMPRIME O TEXTO NA SERIAL
     Serial.print(currentDraw*110); ////IMPRIME NA SERIAL O VALOR DA CORRENTE MEDIDA * A TENSÃO NOMINAL DA TOMADA
     Serial.println("W"); //IMPRIME O TEXTO NA SERIAL
+}
+
+void EEPROMWriteInt(int address, int value) {
+   byte hiByte = highByte(value);
+   byte loByte = lowByte(value);
+
+   EEPROM.write(address, hiByte);
+   EEPROM.write(address + 1, loByte);   
+}
+
+int EEPROMReadInt(int address) {
+   byte hiByte = EEPROM.read(address);
+   byte loByte = EEPROM.read(address + 1);
+   
+   return word(hiByte, loByte); 
 }
