@@ -7,6 +7,7 @@ const int pinoSensor = A2; //PINO ANALÓGICO EM QUE O SENSOR ESTÁ CONECTADO
 float ruido = 0.08; //RUÍDO PRODUZIDO NA SAÍDA DO SENSOR (DEVE SER AJUSTADO COM A CARGA DESLIGADA APÓS CARREGAMENTO DO CÓDIGO NO ARDUINO)
 unsigned long d_tempo = 0;
 double consumo;
+double consumo_Wh;
 
 EnergyMonitor emon1; //CRIA UMA INSTÂNCIA
  
@@ -25,9 +26,10 @@ void loop(){
   }
 
   if(millis()- d_tempo > 1000){
-    consumo = (currentDraw*tensao)/3600000; //CONSUMO PELA VARIAÇÃO DE UM SEGUNDO. CONVERSÃO PARA kWh
+    consumo += (currentDraw*tensao)/3600000; //CONSUMO PELA VARIAÇÃO DE UM SEGUNDO. CONVERSÃO PARA kWh
+    consumo_Wh += (currentDraw*tensao)/3600; //CONSUMO PELA VARIAÇÃO DE UM SEGUNDO. CONVERSÃO PARA Wh
     d_tempo = millis();
-   // Serial.println("Rodei - consumo"); //VERIFICAÇÃO DO PROCESSO
+    Serial.println("Rodei - consumo"); 
   }
 
   
@@ -38,6 +40,10 @@ void loop(){
     Serial.print("Potencia calculada: "); //IMPRIME O TEXTO NA SERIAL
     Serial.print(currentDraw*tensao); ////IMPRIME NA SERIAL O VALOR DA CORRENTE MEDIDA * A TENSÃO NOMINAL DA TOMADA
     Serial.println("W"); //IMPRIME O TEXTO NA SERIAL 
+
+    Serial.print("Consumo: "); //IMPRIME O TEXTO NA SERIAL
+    Serial.print(consumo_Wh); ////IMPRIME NA SERIAL O VALOR DA CORRENTE MEDIDA * A TENSÃO NOMINAL DA TOMADA
+    Serial.println("Wh");
 
     Serial.print("Consumo: "); //IMPRIME O TEXTO NA SERIAL
     Serial.print(consumo); ////IMPRIME NA SERIAL O VALOR DA CORRENTE MEDIDA * A TENSÃO NOMINAL DA TOMADA
