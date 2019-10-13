@@ -11,7 +11,6 @@ double Vp = 0;
 double Vrms = 0;
 double Irms = 0;
 double consumo;
-unsigned long d_tempo = 0;
 //Lendo corrente
 
 //Conexão WiFi
@@ -31,7 +30,9 @@ void handleRoot() {
 
   textoHTML = "<p>Ola!! Aqui &eacute; o <b>ESP8266</b> falando!</p> ";
   textoHTML += "<p>Corente: "; textoHTML += getIrms(); textoHTML += "A. </p>";
-  textoHTML += "<p>consumo: "; textoHTML += consumo_kWh(); textoHTML += "kWh. </p>";
+  textoHTML += "<p>Potência: "; textoHTML += (getIrms()*127); textoHTML += "W. </p>";
+  textoHTML += "<p>Consumo: "; textoHTML += (consumo_kWh()/1000); textoHTML += "kWh. </p>";
+  textoHTML += "<p>Consumo: "; textoHTML += consumo_kWh(); textoHTML += "kWh. </p>";
   
 
    
@@ -63,7 +64,7 @@ void handleNotFound(){
 void setup(void){
   pinMode(led, OUTPUT);
   digitalWrite(led, 0);
-  Serial.begin(9600);
+  Serial.begin(11520);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   Serial.println("");
@@ -139,9 +140,9 @@ double getIrms()
 
 double consumo_kWh()
 {
- if(millis()- d_tempo > 1000){
+ uint32_t start_time = millis();
+ if(millis()- start_time > 1000){
     consumo += (getIrms()*tensao)/3600000; //CONSUMO PELA VARIAÇÃO DE UM SEGUNDO. CONVERSÃO PARA kWh
-    d_tempo = millis(); 
   }
   return consumo; 
 }  
