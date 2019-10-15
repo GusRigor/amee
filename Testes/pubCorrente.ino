@@ -8,9 +8,22 @@ const int mqttPort = 10622 // Aqui mude para sua porta fornecida pelo site
 const char* mqttUser = "ubnuccyu"; //  Aqui o nome de usuario fornecido pelo site
 const char* mqttPassword = "aVnZYSCwhNmA"; //  Aqui sua senha fornecida pelo site
 char EstadoSaida = '0';  
+
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 #define mqtt_topico_pub "/Corrente"
+
+#define tensao 110
+const int sensorIn = A0;
+int mVperAmp = 100;
+double Vpp = 0;
+double Vp = 0;
+double Vrms = 0;
+double Irms = 0;
+double consumo;
+double getIrms();
+double getVPP();
 
 /*Usar essa função para uma futura implementação do código
  *quando ele começar a fazer subscribe no tópico
@@ -225,6 +238,48 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 
 void loop() {
-  //Colocar a lógica do programa consumo.ino 
+
+ uint32_t start_time = millis();
+ if(millis()- start_time > 5000){
+    consumo += (getIrms()*tensao)/720000; //CONSUMO PELA VARIAÇÃO DE 5 SEGUNDOS. CONVERSÃO PARA kWh
+  }
+  
   publicaComando();
+}
+double getVPP()
+{
+  double result;
+
+    int readValue;
+    int maxValue = 0;
+    int minValue = 1024;
+
+    uint32_t start_time = millis();
+    while((millis()-start_time) < 1000)
+    {
+      readValue = analogRead(sensorIn);
+      if(readValue > maxValue)
+      {
+        maxValue = readValue;
+      }
+      if(readValue < minValue)
+      {
+        minValue = readValue;
+      }
+    }
+    result = ((maxValue - minValue)* 5.0)/1024.0;
+    return result;
+}
+
+double getIrms()
+{
+  Vpp = getVPP();
+  Vp = Vpp/2.0;
+  Vrms = Vp*0.707;
+  Irms = ((Vrms*1000)/mVperAmp) - 0.09;
+  if(Irms <= 0.3)
+  {
+    return 0.0;
+  }
+  return Irms;
 }
