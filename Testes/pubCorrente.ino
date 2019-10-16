@@ -37,7 +37,7 @@ D10 = 1;
 #define servidor_mqtt_porta       "10622"  //Porta do servidor (a mesma deve ser informada na variável abaixo)
 #define servidor_mqtt_usuario     "ubnuccyu"  //Usuário
 #define servidor_mqtt_senha       "aVnZYSCwhNmA"  //Senha
-#define mqtt_topico_pub           "Corrente/sensor1"    //Tópico para publicar o comando de inverter o pino do outro ESP8266
+#define mqtt_topico_pub           "Corrente/sensor2"    //Tópico para publicar o comando de inverter o pino do outro ESP8266
 #define tensao 110
 //Declaração do pino que será utilizado
 #define pino                      2                   //Pino que será lido e caso seja alterado seu status, deverá ser enviado um comando para o outro ESP.
