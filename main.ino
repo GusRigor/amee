@@ -1,13 +1,15 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+
 #define tensao 110
 
-const char* ssid = "TrocoSenhaPorCerveja";
-const char* password =  "renatobike";
-const char* mqttServer = "soldier.cloudmqtt.com";
-const int mqttPort = 10622;
-const char* mqttUser = "ubnuccyu";
-const char* mqttPassword = "aVnZYSCwhNmA";
+const char* ssid = "VICTORIA";
+const char* password =  "@Naruto123";
+const char* mqttServer = "192.168.0.110";
+const int mqttPort = 1885;
+const char* mqttId = "esp8266-sensor-0";
+// const char* mqttUser = "ubnuccyu";
+// const char* mqttPassword = "aVnZYSCwhNmA";
 
 
 //Variáveis para a leitura da corrente
@@ -67,8 +69,6 @@ double getIrms()
 //Funções para leitura da corrente
 
 
-
- 
 WiFiClient espClient;
 PubSubClient client(espClient);
  
@@ -90,7 +90,8 @@ void setup() {
   while (!client.connected()) {
     Serial.println("Connecting to MQTT...");
  
-    if (client.connect("ESP8266Client", mqttUser, mqttPassword )) {
+    // if (client.connect("ESP8266Client", mqttUser, mqttPassword )) {
+    if (client.connect(mqttId)) { 
  
       Serial.println("connected");  
  
@@ -102,43 +103,45 @@ void setup() {
  
     }
   }
+
   if(millis() - d_tempo > 1000){
     consumo += (getIrms()*tensao)/3600; //CONSUMO PELA VARIAÇÃO DE 5 SEGUNDOS. CONVERSÃO PARA Wh
     strtemp = String(consumo, 1);
     strtemp.toCharArray(valueStr, 15);
     Serial.println("Enviando para MQTT..");  
     d_tempo = millis();
-    client.publish("Corrente/Sensor2", valueStr);
+    client.publish("set-current", valueStr);
   }
   
-  client.subscribe("Corrente/rele2");
- 
+  client.subscribe("power-on");
+  client.subscribe("power-off");
 }
  
-void callback(char* topic, byte* payload, unsigned int length) {
-  payload[length] = '\0';
-  String strMensagem = String((char*)payload);
-  strMensagem.toLowerCase();
+void callback(String topic, byte* payload, unsigned int length) {
+  // payload[length] = '\0';
+  // String strMensagem = String((char*)payload);
+  // strMensagem.toLowerCase();
+
   Serial.print("Message arrived in topic: ");
   Serial.println(topic);
-  
-  if(strMensagem == "liga"){
-    Serial.println("Colocando o pino em stado ALTO...");
+
+  if (topic.equalsIgnoreCase("power-on")) {
+    Serial.println("Colocando o pino em estado ALTO...");
     digitalWrite(2, HIGH); //Pino D4=2
   }
-  if(strMensagem == "desliga"){
-    Serial.println( "Colocando o pino em stado BAIXO...");
+  
+  if (topic.equalsIgnoreCase("power-off")){
+    Serial.println( "Colocando o pino em estado BAIXO...");
     digitalWrite(2, LOW); //Pino D4=2
   }
    
-  Serial.print("Message:");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
+  // Serial.print("Message:");
+  // for (int i = 0; i < length; i++) {
+  //   Serial.print((char)payload[i]);
+  // }
  
   Serial.println();
   Serial.println("-----------------------");
- 
 }
  
 void loop() {
@@ -150,6 +153,6 @@ void loop() {
     Serial.print("Enviando para MQTT.. Corrente em Amper: ");
     Serial.println(valueStr);
     d_tempo = millis();
-    client.publish("Corrente/Sensor2", valueStr);
+    client.publish("set-current", valueStr);
   }
 }

@@ -7,7 +7,9 @@
                 "C:\\Users\\Victor\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
                 "C:\\Users\\Victor\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.5.0\\**",
                 "/Users/victor/Library/Arduino15/packages/esp8266/hardware/esp8266/2.5.2/**",
-                "/Users/victor/Library/Arduino15/packages/esp8266/tools/**"
+                "/Users/victor/Library/Arduino15/packages/esp8266/tools/**",
+                "/home/victor/.arduino15/packages/esp8266/hardware/esp8266/2.5.2/**",
+                "/home/victor/.arduino15/packages/esp8266/tools/**"
             ],
             "forcedInclude": [],
             "intelliSenseMode": "gcc-x64",
@@ -20,6 +22,15 @@
             "includePath": [
                 "/Users/victor/Library/Arduino15/packages/esp8266/tools/**",
                 "/Users/victor/Library/Arduino15/packages/esp8266/hardware/esp8266/2.5.2/**"
+            ],
+            "forcedInclude": []
+        },
+        {
+            "name": "Linux",
+            "includePath": [
+                "/home/victor/.arduino15/packages/esp8266/hardware/esp8266/2.5.2/libraries/ESP8266WiFi/src",
+                "/home/victor/.arduino15/packages/esp8266/tools/**",
+                "/home/victor/.arduino15/packages/esp8266/hardware/esp8266/2.5.2/**"
             ],
             "forcedInclude": []
         }
