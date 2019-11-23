@@ -3,8 +3,8 @@
 
 #define tensao 110
 
-const char* ssid = "VICTORIA";
-const char* password =  "@Naruto123";
+const char* ssid = "TrocoSenharPorCerveja";
+const char* password =  "renatobike";
 const char* mqttServer = "192.168.0.110";
 const int mqttPort = 1885;
 const char* mqttId = "esp8266-sensor-0";
